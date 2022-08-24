@@ -1,9 +1,9 @@
 # Spring Boot API REST para el registro del inventario de estado de vacunación de empleados
 
 API REST para llevar un registro del inventario del estado de vacunación de los empleados 
-en una empresa, con base en el lenguaje JAVA, Spring Boot Framework y PostgreSQL.
+en una empresa, con base en el lenguaje JAVA, Spring Boot y PostgreSQL.
 
-Nota.- Se emplea el patrón DTO.
+Nota.- Se emplea Clean Code, Clean Architecture, el patrón DTO, entre otros.
 
 ## Condiciones
 
