@@ -39,5 +39,5 @@ public class EmpleadoGetAllDTO {
     private EstadoVacunacion estadoVacunacion;
 
     @JsonProperty("vacuna")
-    VacunaDTO vacuna;
+    private VacunaDTO vacuna;
 }

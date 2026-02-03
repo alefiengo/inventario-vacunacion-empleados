@@ -13,4 +13,14 @@ public enum EstadoVacunacion {
     public String getCodigo() {
         return codigo;
     }
+
+    public static java.util.Optional<EstadoVacunacion> fromCodigo(String codigo) {
+        if (codigo == null) {
+            return java.util.Optional.empty();
+        }
+        String normalizado = codigo.trim().toUpperCase();
+        return java.util.Arrays.stream(values())
+                .filter(valor -> valor.codigo.equalsIgnoreCase(normalizado) || valor.name().equalsIgnoreCase(normalizado))
+                .findFirst();
+    }
 }

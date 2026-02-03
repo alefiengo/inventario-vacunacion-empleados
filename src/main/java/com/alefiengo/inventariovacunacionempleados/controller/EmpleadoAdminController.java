@@ -1,30 +1,35 @@
 package com.alefiengo.inventariovacunacionempleados.controller;
 
+import com.alefiengo.inventariovacunacionempleados.domain.dto.ApiResponse;
 import com.alefiengo.inventariovacunacionempleados.domain.dto.EmpleadoAdminDTO;
 import com.alefiengo.inventariovacunacionempleados.domain.dto.EmpleadoGetAllDTO;
 import com.alefiengo.inventariovacunacionempleados.domain.entity.Empleado;
+import com.alefiengo.inventariovacunacionempleados.domain.enumerator.EstadoVacunacion;
+import com.alefiengo.inventariovacunacionempleados.domain.enumerator.TipoVacuna;
 import com.alefiengo.inventariovacunacionempleados.domain.mapper.MapStructMapper;
 import com.alefiengo.inventariovacunacionempleados.service.EmpleadoService;
-import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @RestController
 @RequestMapping("/admin/empleados")
 @ConditionalOnProperty(prefix = "app", name = "controller.enable-dto", havingValue = "true")
-@Api(value = "Acciones relacionadas con los empleados", tags = "Rol ADMINISTRADOR")
+@Tag(name = "Rol ADMINISTRADOR", description = "Acciones relacionadas con los empleados")
 public class EmpleadoAdminController {
 
     private final EmpleadoService empleadoService;
@@ -37,98 +42,75 @@ public class EmpleadoAdminController {
     }
 
     @GetMapping
-    public ResponseEntity<?> obtenerEmpleados() {
-        Map<String, Object> mensaje = new HashMap<>();
-        List<Empleado> empleados = (List<Empleado>) empleadoService.findAll();
-
-        if (empleados.isEmpty()) {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", "No se encontraron empleados");
-            return ResponseEntity.badRequest().body(mensaje);
-        }
-
+    public ResponseEntity<ApiResponse<List<EmpleadoAdminDTO>>> obtenerEmpleados() {
+        List<Empleado> empleados = convertirALista(empleadoService.findAll());
         List<EmpleadoAdminDTO> empleadosDTO = empleados
                 .stream()
                 .map(mapStructMapper::empleadoAdminDto)
                 .collect(Collectors.toList());
 
-        mensaje.put("estado", Boolean.TRUE);
-        mensaje.put("datos", empleadosDTO);
-
-        return ResponseEntity.ok(mensaje);
+        String mensaje = empleadosDTO.isEmpty() ? "No se encontraron empleados" : null;
+        return ResponseEntity.ok(new ApiResponse<>(true, mensaje, empleadosDTO, null));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerEmpleadoPorId(@PathVariable Long id) {
-        Map<String, Object> mensaje = new HashMap<>();
+    public ResponseEntity<ApiResponse<EmpleadoAdminDTO>> obtenerEmpleadoPorId(@PathVariable Long id) {
         Optional<Empleado> oEmpleado = empleadoService.findById(id);
 
         if (oEmpleado.isEmpty()) {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", String.format("No se encontró al empleado con el ID: %d", id));
-            return ResponseEntity.badRequest().body(mensaje);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(false, String.format("No se encontró al empleado con el ID: %d", id), null, null));
         }
 
-        Optional<EmpleadoAdminDTO> oEmpleadoDTO = oEmpleado
-                .stream()
-                .map(mapStructMapper::empleadoAdminDto)
-                .findFirst();
-
-        mensaje.put("estado", Boolean.TRUE);
-        mensaje.put("datos", oEmpleadoDTO.get());
-
-        return ResponseEntity.ok(mensaje);
+        EmpleadoAdminDTO empleadoDTO = mapStructMapper.empleadoAdminDto(oEmpleado.get());
+        return ResponseEntity.ok(new ApiResponse<>(true, null, empleadoDTO, null));
     }
 
     @PostMapping
-    public ResponseEntity<?> crearEmpleado(@Valid @RequestBody EmpleadoAdminDTO empleado, BindingResult resultado) {
-        Map<String, Object> mensaje = new HashMap<>();
-        Map<String, Object> validaciones = new HashMap<>();
+    public ResponseEntity<ApiResponse<EmpleadoAdminDTO>> crearEmpleado(@Valid @RequestBody EmpleadoAdminDTO empleado, BindingResult resultado) {
         String cedula = empleado.getCedula();
         Empleado empleadoRegistrar;
         Optional<Empleado> oEmpleadoCedula = empleadoService.filtrarPorCedula(cedula);
 
         if (resultado.hasErrors()) {
-            resultado.getFieldErrors()
-                    .forEach(error -> validaciones.put(error.getField(), error.getDefaultMessage()));
-
-            return ResponseEntity.badRequest().body(validaciones);
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "Validación fallida", null, mapearErrores(resultado)));
         }
 
         if (oEmpleadoCedula.isPresent()) {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", String.format("El empleado con cédula %s, ya se encuentra registrado", cedula));
-            return ResponseEntity.badRequest().body(mensaje);
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(false, String.format("El empleado con cédula %s, ya se encuentra registrado", cedula), null, null));
         }
 
         empleadoRegistrar = mapStructMapper.empleadoAdmin(empleado);
         empleadoRegistrar.setUsuario(cedula);
         empleadoRegistrar.setContrasenia(cedula);
 
-        mensaje.put("estado", Boolean.TRUE);
-        mensaje.put("datos", empleadoService.save(empleadoRegistrar));
-
-        return ResponseEntity.ok(mensaje);
+        Empleado guardado = empleadoService.save(empleadoRegistrar);
+        EmpleadoAdminDTO respuesta = mapStructMapper.empleadoAdminDto(guardado);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>(true, "Empleado creado", respuesta, null));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarEmpleado(@PathVariable Long id, @Valid @RequestBody EmpleadoAdminDTO empleado, BindingResult resultado) {
-        Map<String, Object> mensaje = new HashMap<>();
-        Map<String, Object> validaciones = new HashMap<>();
+    public ResponseEntity<ApiResponse<EmpleadoAdminDTO>> actualizarEmpleado(@PathVariable Long id, @Valid @RequestBody EmpleadoAdminDTO empleado, BindingResult resultado) {
         EmpleadoAdminDTO empleadoActualizado;
         Optional<Empleado> oEmpleado = empleadoService.findById(id);
+        Optional<Empleado> oEmpleadoCedula = empleadoService.filtrarPorCedula(empleado.getCedula());
 
         if (resultado.hasErrors()) {
-            resultado.getFieldErrors()
-                    .forEach(error -> validaciones.put(error.getField(), error.getDefaultMessage()));
-
-            return ResponseEntity.badRequest().body(validaciones);
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "Validación fallida", null, mapearErrores(resultado)));
         }
 
         if (oEmpleado.isEmpty()) {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", String.format("No se encontró al empleado con el ID: %d", id));
-            return ResponseEntity.badRequest().body(mensaje);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(false, String.format("No se encontró al empleado con el ID: %d", id), null, null));
+        }
+
+        if (oEmpleadoCedula.isPresent() && !oEmpleadoCedula.get().getId().equals(id)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(false, String.format("El empleado con cédula %s, ya se encuentra registrado", empleado.getCedula()), null, null));
         }
 
         empleadoActualizado = mapStructMapper.empleadoAdminDto(oEmpleado.get());
@@ -137,99 +119,71 @@ public class EmpleadoAdminController {
         empleadoActualizado.setApellidos(empleado.getApellidos());
         empleadoActualizado.setCorreoElectronico(empleado.getCorreoElectronico());
 
-        mensaje.put("estado", Boolean.TRUE);
-        mensaje.put("datos", empleadoService.save(mapStructMapper.empleadoAdmin(empleadoActualizado)));
-
-        return ResponseEntity.ok(mensaje);
+        Empleado guardado = empleadoService.save(mapStructMapper.empleadoAdmin(empleadoActualizado));
+        EmpleadoAdminDTO respuesta = mapStructMapper.empleadoAdminDto(guardado);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Empleado actualizado", respuesta, null));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> eliminarEmpleado(@PathVariable Long id) {
-        Map<String, Object> mensaje = new HashMap<>();
+    public ResponseEntity<ApiResponse<Void>> eliminarEmpleado(@PathVariable Long id) {
         Optional<Empleado> oEmpleado = empleadoService.findById(id);
 
         if (oEmpleado.isEmpty()) {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", String.format("No se encontraron empleados con el ID: %d", id));
-            return ResponseEntity.badRequest().body(mensaje);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(false, String.format("No se encontraron empleados con el ID: %d", id), null, null));
         }
 
         empleadoService.deleteById(id);
-
-        mensaje.put("estado", Boolean.TRUE);
-        mensaje.put("datos", null);
-
-        return ResponseEntity.ok(mensaje);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Empleado eliminado", null, null));
     }
 
     @GetMapping("/por-estado-vacunacion/{estadoVacunacion}")
-    public ResponseEntity<?> obtenerEmpleadosPorEstadoVacunacion(@PathVariable String estadoVacunacion) {
-        Map<String, Object> mensaje = new HashMap<>();
-        List<Empleado> empleados;
-        String sEstadoVacunacion;
-
-        if (estadoVacunacion.equals("V")) {
-            sEstadoVacunacion = "Vacunados";
-            empleados = (List<Empleado>) empleadoService.obtenerEmpleadosVacunados();
-        } else if (estadoVacunacion.equals("NV")) {
-            sEstadoVacunacion = "No Vacunados";
-            empleados = (List<Empleado>) empleadoService.obtenerEmpleadosNoVacunados();
-        } else {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", "No existe el estado de vacunación ingresado");
-            return ResponseEntity.badRequest().body(mensaje);
+    public ResponseEntity<ApiResponse<List<EmpleadoGetAllDTO>>> obtenerEmpleadosPorEstadoVacunacion(@PathVariable String estadoVacunacion) {
+        Optional<EstadoVacunacion> estado = EstadoVacunacion.fromCodigo(estadoVacunacion);
+        if (estado.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "No existe el estado de vacunación ingresado", null, null));
         }
 
-        if (empleados.isEmpty()) {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", String.format("No se encontraron empleados %s", sEstadoVacunacion));
-            return ResponseEntity.badRequest().body(mensaje);
-        }
+        List<Empleado> empleados = estado.get() == EstadoVacunacion.VACUNADO
+                ? convertirALista(empleadoService.obtenerEmpleadosVacunados())
+                : convertirALista(empleadoService.obtenerEmpleadosNoVacunados());
 
         List<EmpleadoGetAllDTO> empleadosDTO = empleados
                 .stream()
                 .map(mapStructMapper::empleadoGetAllDTO)
                 .collect(Collectors.toList());
 
-        mensaje.put("estado", Boolean.TRUE);
-        mensaje.put("datos", empleadosDTO);
+        String etiqueta = estado.get() == EstadoVacunacion.VACUNADO ? "Vacunados" : "No Vacunados";
+        String mensaje = empleadosDTO.isEmpty() ? String.format("No se encontraron empleados %s", etiqueta) : null;
 
-        return ResponseEntity.ok(mensaje);
+        return ResponseEntity.ok(new ApiResponse<>(true, mensaje, empleadosDTO, null));
     }
 
     @GetMapping("/por-tipo-vacuna/{tipoVacuna}")
-    public ResponseEntity<?> obtenerEmpleadosPorTipoVacuna(@PathVariable String tipoVacuna) {
-        Map<String, Object> mensaje = new HashMap<>();
-        List<Empleado> empleados;
-        String sTipoVacuna;
-
-        switch (tipoVacuna) {
-            case "SV":
-                sTipoVacuna = "Sputnik V";
-                empleados = (List<Empleado>) empleadoService.obtenerEmpleadosSputnikV();
-                break;
-            case "AZ":
-                sTipoVacuna = "AstraZeneca";
-                empleados = (List<Empleado>) empleadoService.obtenerEmpleadosAstraZeneca();
-                break;
-            case "P":
-                sTipoVacuna = "Pfizer";
-                empleados = (List<Empleado>) empleadoService.obtenerEmpleadosPfizer();
-                break;
-            case "JJ":
-                sTipoVacuna = "Jhonson & Jhonson";
-                empleados = (List<Empleado>) empleadoService.obtenerEmpleadosJhonsonAndJhonson();
-                break;
-            default:
-                mensaje.put("estado", Boolean.FALSE);
-                mensaje.put("mensaje", "No existe el tipo de vacuna ingresado");
-                return ResponseEntity.badRequest().body(mensaje);
+    public ResponseEntity<ApiResponse<List<EmpleadoGetAllDTO>>> obtenerEmpleadosPorTipoVacuna(@PathVariable String tipoVacuna) {
+        Optional<TipoVacuna> tipo = TipoVacuna.fromCodigo(tipoVacuna);
+        if (tipo.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "No existe el tipo de vacuna ingresado", null, null));
         }
 
-        if (empleados.isEmpty()) {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", String.format("No se encontraron empleados con la vacuna %s", sTipoVacuna));
-            return ResponseEntity.badRequest().body(mensaje);
+        List<Empleado> empleados;
+        switch (tipo.get()) {
+            case SPUTNIK_V:
+                empleados = convertirALista(empleadoService.obtenerEmpleadosSputnikV());
+                break;
+            case ASTRA_ZENECA:
+                empleados = convertirALista(empleadoService.obtenerEmpleadosAstraZeneca());
+                break;
+            case PFIZER:
+                empleados = convertirALista(empleadoService.obtenerEmpleadosPfizer());
+                break;
+            case JHONSON_AND_JHONSON:
+                empleados = convertirALista(empleadoService.obtenerEmpleadosJhonsonAndJhonson());
+                break;
+            default:
+                empleados = List.of();
         }
 
         List<EmpleadoGetAllDTO> empleadosDTO = empleados
@@ -237,36 +191,60 @@ public class EmpleadoAdminController {
                 .map(mapStructMapper::empleadoGetAllDTO)
                 .collect(Collectors.toList());
 
-        mensaje.put("estado", Boolean.TRUE);
-        mensaje.put("datos", empleadosDTO);
+        String mensaje = empleadosDTO.isEmpty()
+                ? String.format("No se encontraron empleados con la vacuna %s", nombreVacuna(tipo.get()))
+                : null;
 
-        return ResponseEntity.ok(mensaje);
+        return ResponseEntity.ok(new ApiResponse<>(true, mensaje, empleadosDTO, null));
     }
 
     @GetMapping("/por-rango-vacunacion/{fechaInicio}/{fechaFin}")
-    public ResponseEntity<?> obtenerEmpleadosPorRangoFechaVacunacion(@PathVariable String fechaInicio, @PathVariable String fechaFin) {
-        Map<String, Object> mensaje = new HashMap<>();
-
-        DateTimeFormatter format = DateTimeFormatter.ofPattern("dd-MM-yyyy");
-        LocalDate fIni = LocalDate.parse(fechaInicio, format);
-        LocalDate fFin = LocalDate.parse(fechaFin, format);
-
-        List<Empleado> empleados = (List<Empleado>) empleadoService.filtrarPorRangoFechaVacunacion(fIni, fFin);
-
-        if (empleados.isEmpty()) {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", "No se encontraron empleados vacunados en el rango de fechas ingresadas");
-            return ResponseEntity.badRequest().body(mensaje);
+    public ResponseEntity<ApiResponse<List<EmpleadoGetAllDTO>>> obtenerEmpleadosPorRangoFechaVacunacion(
+            @PathVariable @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate fechaInicio,
+            @PathVariable @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate fechaFin
+    ) {
+        if (fechaFin.isBefore(fechaInicio)) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "La fecha fin no puede ser anterior a la fecha inicio", null, null));
         }
 
+        List<Empleado> empleados = convertirALista(empleadoService.filtrarPorRangoFechaVacunacion(fechaInicio, fechaFin));
         List<EmpleadoGetAllDTO> empleadosDTO = empleados
                 .stream()
                 .map(mapStructMapper::empleadoGetAllDTO)
                 .collect(Collectors.toList());
 
-        mensaje.put("estado", Boolean.TRUE);
-        mensaje.put("datos", empleadosDTO);
+        String mensaje = empleadosDTO.isEmpty()
+                ? "No se encontraron empleados vacunados en el rango de fechas ingresadas"
+                : null;
 
-        return ResponseEntity.ok(mensaje);
+        return ResponseEntity.ok(new ApiResponse<>(true, mensaje, empleadosDTO, null));
+    }
+
+    private Map<String, String> mapearErrores(BindingResult resultado) {
+        Map<String, String> errores = new HashMap<>();
+        resultado.getFieldErrors()
+                .forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
+        return errores;
+    }
+
+    private List<Empleado> convertirALista(Iterable<Empleado> empleados) {
+        return StreamSupport.stream(empleados.spliterator(), false)
+                .collect(Collectors.toList());
+    }
+
+    private String nombreVacuna(TipoVacuna tipoVacuna) {
+        switch (tipoVacuna) {
+            case SPUTNIK_V:
+                return "Sputnik V";
+            case ASTRA_ZENECA:
+                return "AstraZeneca";
+            case PFIZER:
+                return "Pfizer";
+            case JHONSON_AND_JHONSON:
+                return "Jhonson & Jhonson";
+            default:
+                return tipoVacuna.name();
+        }
     }
 }

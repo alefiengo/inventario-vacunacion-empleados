@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -43,27 +43,23 @@ public class Empleado implements Serializable {
     @Column(name = "correo_electronico", nullable = false)
     private String correoElectronico;
 
-    @NonNull
     @Basic
     @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
-    @NonNull
     @Basic
     @Column(name = "domicilio")
     private String domicilio;
 
-    @NonNull
     @Basic
     @Column(name = "telefono_movil")
     private String telefonoMovil;
 
-    @NonNull
     @Basic
     @Column(name = "estado_vacunacion")
     private EstadoVacunacion estadoVacunacion;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "vacuna_id", referencedColumnName = "id")
     private Vacuna vacuna;
 

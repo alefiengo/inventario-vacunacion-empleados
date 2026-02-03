@@ -2,9 +2,8 @@ package com.alefiengo.inventariovacunacionempleados.domain.converter;
 
 import com.alefiengo.inventariovacunacionempleados.domain.enumerator.TipoVacuna;
 
-import javax.persistence.AttributeConverter;
-import javax.persistence.Converter;
-import java.util.stream.Stream;
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
 
 @Converter(autoApply = true)
 public class TipoVacunaConverter implements AttributeConverter<TipoVacuna, String> {
@@ -23,9 +22,7 @@ public class TipoVacunaConverter implements AttributeConverter<TipoVacuna, Strin
             return null;
         }
 
-        return Stream.of(TipoVacuna.values())
-                .filter(c -> c.getCodigo().equals(codigo))
-                .findFirst()
+        return TipoVacuna.fromCodigo(codigo)
                 .orElseThrow(IllegalArgumentException::new);
     }
 }

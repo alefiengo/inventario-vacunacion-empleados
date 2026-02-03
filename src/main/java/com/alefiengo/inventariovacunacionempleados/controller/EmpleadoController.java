@@ -1,26 +1,28 @@
 package com.alefiengo.inventariovacunacionempleados.controller;
 
+import com.alefiengo.inventariovacunacionempleados.domain.dto.ApiResponse;
 import com.alefiengo.inventariovacunacionempleados.domain.dto.EmpleadoDTO;
 import com.alefiengo.inventariovacunacionempleados.domain.dto.EmpleadoGetAllDTO;
 import com.alefiengo.inventariovacunacionempleados.domain.entity.Empleado;
+import com.alefiengo.inventariovacunacionempleados.domain.enumerator.EstadoVacunacion;
 import com.alefiengo.inventariovacunacionempleados.domain.mapper.MapStructMapper;
 import com.alefiengo.inventariovacunacionempleados.service.EmpleadoService;
-import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
-import java.util.HashMap;
+import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/empleados")
 @ConditionalOnProperty(prefix = "app", name = "controller.enable-dto", havingValue = "true")
-@Api(value = "Acciones relacionadas con los empleados", tags = "Rol EMPLEADO")
+@Tag(name = "Rol EMPLEADO", description = "Acciones relacionadas con los empleados")
 public class EmpleadoController {
 
     private final EmpleadoService empleadoService;
@@ -33,48 +35,45 @@ public class EmpleadoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerEmpleadoPorId(@PathVariable Long id) {
-        Map<String, Object> mensaje = new HashMap<>();
+    public ResponseEntity<ApiResponse<EmpleadoGetAllDTO>> obtenerEmpleadoPorId(@PathVariable Long id) {
         Optional<Empleado> oEmpleado = empleadoService.findById(id);
 
         if (oEmpleado.isEmpty()) {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", String.format("No se encontró al empleado con el ID: %d", id));
-            return ResponseEntity.badRequest().body(mensaje);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(false, String.format("No se encontró al empleado con el ID: %d", id), null, null));
         }
 
-        Optional<EmpleadoGetAllDTO> oEmpleadoGetAllDTO = oEmpleado
-                .stream()
-                .map(mapStructMapper::empleadoGetAllDTO)
-                .findFirst();
-
-        mensaje.put("estado", Boolean.TRUE);
-        mensaje.put("datos", oEmpleadoGetAllDTO.get());
-
-        return ResponseEntity.ok(mensaje);
+        EmpleadoGetAllDTO empleadoDTO = mapStructMapper.empleadoGetAllDTO(oEmpleado.get());
+        return ResponseEntity.ok(new ApiResponse<>(true, null, empleadoDTO, null));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarEmpleado(@PathVariable Long id,
-                                                @Valid @RequestBody EmpleadoDTO empleado,
-                                                BindingResult resultado
+    public ResponseEntity<ApiResponse<EmpleadoDTO>> actualizarEmpleado(@PathVariable Long id,
+                                                                       @Valid @RequestBody EmpleadoDTO empleado,
+                                                                       BindingResult resultado
     ) {
-        Map<String, Object> mensaje = new HashMap<>();
-        Map<String, Object> validaciones = new HashMap<>();
         EmpleadoDTO empleadoActualizado;
         Optional<Empleado> oEmpleado = empleadoService.findById(id);
 
         if (resultado.hasErrors()) {
-            resultado.getFieldErrors()
-                    .forEach(error -> validaciones.put(error.getField(), error.getDefaultMessage()));
-
-            return ResponseEntity.badRequest().body(validaciones);
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "Validación fallida", null, mapearErrores(resultado)));
         }
 
         if (oEmpleado.isEmpty()) {
-            mensaje.put("estado", Boolean.FALSE);
-            mensaje.put("mensaje", String.format("No se encontró al empleado con el ID: %d", id));
-            return ResponseEntity.badRequest().body(mensaje);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(false, String.format("No se encontró al empleado con el ID: %d", id), null, null));
+        }
+
+        if (empleado.getEstadoVacunacion() != null) {
+            if (empleado.getEstadoVacunacion() == EstadoVacunacion.VACUNADO && empleado.getVacuna() == null) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(false, "Si el empleado está vacunado, la vacuna es obligatoria", null, null));
+            }
+            if (empleado.getEstadoVacunacion() == EstadoVacunacion.NO_VACUNADO && empleado.getVacuna() != null) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(false, "Si el empleado no está vacunado, no se debe enviar información de vacuna", null, null));
+            }
         }
 
         empleadoActualizado = mapStructMapper.empleadoDto(oEmpleado.get());
@@ -84,9 +83,15 @@ public class EmpleadoController {
         empleadoActualizado.setEstadoVacunacion(empleado.getEstadoVacunacion());
         empleadoActualizado.setVacuna(empleado.getVacuna());
 
-        mensaje.put("estado", Boolean.TRUE);
-        mensaje.put("datos", empleadoService.save(mapStructMapper.empleado(empleadoActualizado)));
+        Empleado guardado = empleadoService.save(mapStructMapper.empleado(empleadoActualizado));
+        EmpleadoDTO respuesta = mapStructMapper.empleadoDto(guardado);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Empleado actualizado", respuesta, null));
+    }
 
-        return ResponseEntity.ok(mensaje);
+    private Map<String, String> mapearErrores(BindingResult resultado) {
+        Map<String, String> errores = new java.util.HashMap<>();
+        resultado.getFieldErrors()
+                .forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
+        return errores;
     }
 }

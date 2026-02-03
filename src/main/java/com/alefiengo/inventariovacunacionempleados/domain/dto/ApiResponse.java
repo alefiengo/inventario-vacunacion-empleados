@@ -1,0 +1,20 @@
+package com.alefiengo.inventariovacunacionempleados.domain.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.Map;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class ApiResponse<T> {
+
+    private boolean estado;
+    private String mensaje;
+    private T datos;
+    private Map<String, String> errores;
+}

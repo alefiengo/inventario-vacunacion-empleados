@@ -2,9 +2,8 @@ package com.alefiengo.inventariovacunacionempleados.domain.converter;
 
 import com.alefiengo.inventariovacunacionempleados.domain.enumerator.EstadoVacunacion;
 
-import javax.persistence.AttributeConverter;
-import javax.persistence.Converter;
-import java.util.stream.Stream;
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
 
 @Converter(autoApply = true)
 public class EstadoVacunacionConverter implements AttributeConverter<EstadoVacunacion, String> {
@@ -23,9 +22,7 @@ public class EstadoVacunacionConverter implements AttributeConverter<EstadoVacun
             return null;
         }
 
-        return Stream.of(EstadoVacunacion.values())
-                .filter(c -> c.getCodigo().equals(codigo))
-                .findFirst()
+        return EstadoVacunacion.fromCodigo(codigo)
                 .orElseThrow(IllegalArgumentException::new);
     }
 }
