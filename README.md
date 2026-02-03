@@ -5,6 +5,18 @@ en una empresa, con Java, Spring Boot y PostgreSQL.
 
 Nota.- Se aplican prácticas básicas de organización por capas y el patrón DTO, con enfoque educativo (no productivo).
 
+## Quick start
+
+1. Levantar PostgreSQL con Docker Compose: `docker compose up -d`
+2. Ejecutar la aplicación desde `src/main/java/com/alefiengo/inventariovacunacionempleados/InventarioVacunacionEmpleadosApplication.java`
+3. Abrir la documentación en `http://localhost:8081/api/v1/swagger-ui/index.html`
+
+### Ejemplo rápido
+
+```
+curl -i http://localhost:8081/api/v1/admin/empleados
+```
+
 ## Alcance funcional
 
 1. La aplicación cuenta con 2 roles: Administrador y Empleado.
@@ -33,7 +45,7 @@ Esta es la lista de todas las tecnologías y/o herramientas utilizadas en el pro
 * Java 21
 * Maven 3.9 o superior
 * Spring Boot 3.5.6
-* Dependencias: Spring Web, Spring Boot DevTools, Lombok, Mapstruct, Validation, Springdoc OpenAPI UI, PostgreSQLDriver
+* Dependencias: Spring Web, Spring Boot DevTools, Lombok, Mapstruct, Validation, Springdoc OpenAPI UI, PostgreSQL JDBC Driver
 * PostgreSQL 14.0
 * IntelliJ IDEA (Community Edition)
 * Plugin recomendado: Lombok
@@ -46,6 +58,7 @@ Esta es la lista de todas las tecnologías y/o herramientas utilizadas en el pro
 git clone https://github.com/alefiengo/inventario-vacunacion-empleados.git
 ```
 Nota.- Esperar hasta que se descarguen todas las dependencias con `Maven`.
+Opcional: también puedes usar el wrapper incluido (`./mvnw`).
 
 2. Crear una base de datos PostgreSQL con el nombre `vacunacion_db`.
 
