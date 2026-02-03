@@ -3,6 +3,7 @@ package com.alefiengo.inventariovacunacionempleados.controller;
 import com.alefiengo.inventariovacunacionempleados.domain.dto.ApiResponse;
 import com.alefiengo.inventariovacunacionempleados.domain.dto.EmpleadoDTO;
 import com.alefiengo.inventariovacunacionempleados.domain.dto.EmpleadoGetAllDTO;
+import com.alefiengo.inventariovacunacionempleados.domain.dto.EmpleadoUpdateDTO;
 import com.alefiengo.inventariovacunacionempleados.domain.entity.Empleado;
 import com.alefiengo.inventariovacunacionempleados.domain.enumerator.EstadoVacunacion;
 import com.alefiengo.inventariovacunacionempleados.domain.mapper.MapStructMapper;
@@ -49,7 +50,7 @@ public class EmpleadoController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<EmpleadoDTO>> actualizarEmpleado(@PathVariable Long id,
-                                                                       @Valid @RequestBody EmpleadoDTO empleado,
+                                                                       @Valid @RequestBody EmpleadoUpdateDTO empleado,
                                                                        BindingResult resultado
     ) {
         EmpleadoDTO empleadoActualizado;

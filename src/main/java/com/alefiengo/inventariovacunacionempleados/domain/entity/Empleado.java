@@ -2,18 +2,20 @@ package com.alefiengo.inventariovacunacionempleados.domain.entity;
 
 import com.alefiengo.inventariovacunacionempleados.domain.enumerator.EstadoVacunacion;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
+import lombok.Setter;
 
 import jakarta.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Getter
+@Setter
 @Entity
 @Table(name = "empleado")
 public class Empleado implements Serializable {

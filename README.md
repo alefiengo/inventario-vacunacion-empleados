@@ -31,13 +31,13 @@ Aclaración inmediata: En el modelo se incluyen dos campos del tipo enum, dentro
 Esta es la lista de todas las tecnologías y/o herramientas utilizadas en el proceso de construcción del proyecto.
 
 * Java 21
-* Maven 3.6.3 o superior
+* Maven 3.9 o superior
 * Spring Boot 3.5.6
 * Dependencias: Spring Web, Spring Boot DevTools, Lombok, Mapstruct, Validation, Springdoc OpenAPI UI, PostgreSQLDriver
 * PostgreSQL 14.0
-* IntelliJ IDEA 2021.2.3 (Community Edition)
+* IntelliJ IDEA (Community Edition)
 * Plugin recomendado: Lombok
-* Insomnia 2021.5.3
+* Insomnia (opcional)
 
 ### 1. Clonar el repositorio
 
@@ -49,7 +49,7 @@ Nota.- Esperar hasta que se descarguen todas las dependencias con `Maven`.
 
 2. Crear una base de datos PostgreSQL con el nombre `vacunacion_db`.
 
-3. Configurar credenciales en `src/main/resources/application.properties`. Variables: `spring.datasource.username` y `spring.datasource.password`.
+3. Configurar credenciales en `src/main/resources/application.properties`. Variables: `spring.datasource.username` y `spring.datasource.password` (o usa `DB_USER` y `DB_PASSWORD`).
 
 ## Ejecución de la aplicación
 
@@ -91,6 +91,7 @@ http://localhost:8081/api/v1/swagger-ui/index.html
 * Por simplicidad, `spring.jpa.hibernate.ddl-auto` está configurado en `update`. En producción se recomienda un manejo de migraciones.
 * `server.error.include-message=always` está pensado para facilitar el aprendizaje durante el desarrollo.
 * Puedes sobreescribir credenciales con variables de entorno: `DB_USER`, `DB_PASSWORD` y `JPA_DDL_AUTO`.
+* Para CORS, puedes ajustar `app.cors.allowed-origins` (lista separada por comas).
 
 ## Extras
 

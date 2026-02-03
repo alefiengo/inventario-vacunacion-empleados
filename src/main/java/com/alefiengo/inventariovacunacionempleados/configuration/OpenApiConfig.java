@@ -18,7 +18,7 @@ public class OpenApiConfig {
                         .version("API V1")
                         .contact(new Contact()
                                 .name("Jose Alejandro Fiengo Vega")
-                                .url("linkedin.com/in/jose-alejandro-fiengo-vega-383560165")
+                                .url("https://linkedin.com/in/jose-alejandro-fiengo-vega-383560165")
                                 .email("jose.fiengo.vega@gmail.com")));
     }
 }
